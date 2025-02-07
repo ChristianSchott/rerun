@@ -19,12 +19,13 @@ pub use point_cloud::{
     PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
     PointCloudSortOrderCache,
 };
+
 pub use rectangles::{
     ColorMapper, ColormappedTexture, RectangleDrawData, RectangleOptions, ShaderDecoding,
     TextureAlpha, TextureFilterMag, TextureFilterMin, TexturedRect,
 };
 pub use test_triangle::TestTriangleDrawData;
-pub use voxel_grid::{VoxelGridDrawData, VoxelGridInstance, VoxelGridOptions};
+pub use voxel_grid::{VoxelGridDrawData, VoxelGridInstance, VoxelGridOptions,VoxelGridRenderer};
 pub use world_grid::{WorldGridConfiguration, WorldGridDrawData, WorldGridRenderer};
 
 pub use self::depth_cloud::{DepthCloud, DepthCloudDrawData, DepthCloudRenderer, DepthClouds};

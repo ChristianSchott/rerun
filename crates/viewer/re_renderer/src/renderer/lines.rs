@@ -541,7 +541,11 @@ impl LineDrawData {
                 let line_vertex_range_end = (start_vertex_for_next_batch
                     + batch_info.line_vertex_count)
                     .min(max_num_vertices as u32);
-                let mut active_phases = enum_set![DrawPhase::PickingLayer] | color_phase;
+
+                let mut active_phases = enum_set!(color_phase);
+                if batch_info.picking_object_id.0 != 0 {
+                    active_phases.insert(DrawPhase::PickingLayer);
+                }
                 // Does the entire batch participate in the outline mask phase?
                 if batch_info.overall_outline_mask_ids.is_some() {
                     active_phases.insert(DrawPhase::OutlineMask);
