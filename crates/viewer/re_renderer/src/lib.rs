@@ -36,9 +36,11 @@ pub mod mesh;
 pub mod renderer;
 pub mod resource_managers;
 pub mod texture_info;
-pub mod video;
 pub mod view_builder;
 pub mod wgpu_buffer_types;
+
+#[cfg(feature = "re_video")]
+pub mod video;
 
 mod color;
 mod colormap;
@@ -52,6 +54,7 @@ mod file_server;
 mod file_system;
 mod global_bindings;
 mod line_drawable_builder;
+mod persistent_point_cloud;
 mod point_cloud_builder;
 mod queueable_draw_data;
 mod rect;
@@ -94,6 +97,7 @@ pub use draw_phases::{
 pub use global_bindings::GlobalBindings;
 pub use importer::{CpuMeshInstance, CpuModel, CpuModelMeshKey};
 pub use line_drawable_builder::{LineBatchBuilder, LineDrawableBuilder, LineStripBuilder};
+pub use persistent_point_cloud::{CPUPointCloud, GPUPersistentPointCloud};
 pub use point_cloud_builder::{PointCloudBatchBuilder, PointCloudBuilder};
 pub use queueable_draw_data::QueueableDrawData;
 pub use rect::{RectF32, RectInt};
@@ -124,8 +128,11 @@ pub use ecolor::{Color32, Hsva, Rgba};
 pub mod external {
     pub use anyhow;
     pub use bytemuck;
-    pub use re_video;
     pub use smallvec;
+
+    #[cfg(feature = "re_video")]
+    pub use re_video;
+
     pub use wgpu;
 }
 
