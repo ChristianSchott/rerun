@@ -36,9 +36,11 @@ pub mod mesh;
 pub mod renderer;
 pub mod resource_managers;
 pub mod texture_info;
-pub mod video;
 pub mod view_builder;
 pub mod wgpu_buffer_types;
+
+#[cfg(feature = "re_video")]
+pub mod video;
 
 mod color;
 mod colormap;
@@ -102,10 +104,12 @@ pub use texture_info::Texture2DBufferInfo;
 pub use transform::RectTransform;
 pub use view_builder::{RenderMode, ViewBuilder, ViewPickingConfiguration};
 pub use wgpu_resources::{
-    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-    GpuPipelineLayoutPool, GpuRenderPipelineHandle, GpuRenderPipelinePool,
-    GpuRenderPipelinePoolAccessor, GpuShaderModuleHandle, GpuShaderModulePool, PipelineLayoutDesc,
-    RenderPipelineDesc, ShaderModuleDesc, VertexBufferLayout, WgpuResourcePoolStatistics,
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, BufferDesc, ComputePipelineDesc,
+    GpuBindGroup, GpuBindGroupLayoutHandle, GpuBuffer, GpuComputePipelineHandle,
+    GpuComputePipelinePool, GpuPipelineLayoutPool, GpuRenderPipelineHandle, GpuRenderPipelinePool,
+    GpuRenderPipelinePoolAccessor, GpuSamplerHandle, GpuShaderModuleHandle, GpuShaderModulePool,
+    GpuTexture, PipelineLayoutDesc, RenderPipelineDesc, SamplerDesc, ShaderModuleDesc, TextureDesc,
+    VertexBufferLayout, WgpuResourcePoolStatistics,
 };
 
 pub use self::file_system::{FileSystem, get_filesystem};
@@ -124,8 +128,12 @@ pub use ecolor::{Color32, Hsva, Rgba};
 pub mod external {
     pub use anyhow;
     pub use bytemuck;
-    pub use re_video;
+    pub use enumset;
     pub use smallvec;
+
+    #[cfg(feature = "re_video")]
+    pub use re_video;
+
     pub use wgpu;
 }
 

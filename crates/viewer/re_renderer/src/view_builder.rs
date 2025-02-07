@@ -50,6 +50,9 @@ struct ViewTargetSetup {
     main_target_resolved: GpuTexture,
     depth_buffer: GpuTexture,
 
+    ui_target_msaa: GpuTexture,
+    ui_target_resolved: GpuTexture,
+
     resolution_in_pixel: [u32; 2],
 }
 
@@ -116,7 +119,7 @@ pub enum Projection {
 }
 
 impl Projection {
-    fn projection_from_view(self, resolution_in_pixel: [u32; 2]) -> glam::Mat4 {
+    pub fn projection_from_view(self, resolution_in_pixel: [u32; 2]) -> glam::Mat4 {
         match self {
             Self::Perspective {
                 vertical_fov,
@@ -470,6 +473,44 @@ impl ViewBuilder {
             },
         );
 
+        let ui_target_msaa = ctx.gpu_resources.textures.alloc(
+            &ctx.device,
+            &TextureDesc {
+                label: format!("{:?} - main target", config.name).into(),
+                size,
+                mip_level_count: 1,
+                sample_count: render_cfg.msaa_mode.sample_count(),
+                dimension: wgpu::TextureDimension::D2,
+                format: Self::MAIN_TARGET_COLOR_FORMAT,
+                usage: if msaa_enabled {
+                    // If MSAA is enabled, we don't read this texture ourselves as it is only used for resolve.
+                    wgpu::TextureUsages::RENDER_ATTACHMENT
+                } else {
+                    wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING
+                },
+            },
+        );
+
+        // Like hdr_render_target, but with MSAA resolved.
+        // We only need to distinguish this if we're using MSAA.
+        let ui_target_resolved = if msaa_enabled {
+            ctx.gpu_resources.textures.alloc(
+                &ctx.device,
+                &TextureDesc {
+                    label: format!("{:?} - main target resolved", config.name).into(),
+                    size,
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: Self::MAIN_TARGET_COLOR_FORMAT,
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                        | wgpu::TextureUsages::TEXTURE_BINDING,
+                },
+            )
+        } else {
+            ui_target_msaa.clone()
+        };
+
         let projection_from_view = config
             .projection_from_view
             .projection_from_view(config.resolution_in_pixel);
@@ -618,8 +659,11 @@ impl ViewBuilder {
             // TODO(andreas): should not always be active.
             // TODO(andreas): The fact that this is a draw phase is actually a bit dubious.
             //if screenshot_processor.is_some() {
-            active_draw_phases |= DrawPhase::CompositingScreenshot;
+            // active_draw_phases |= DrawPhase::CompositingScreenshot;
             //}
+
+            active_draw_phases |= DrawPhase::UiShadow;
+            active_draw_phases |= DrawPhase::Ui;
 
             active_draw_phases
         };
@@ -632,6 +676,8 @@ impl ViewBuilder {
             bind_group_0,
             main_target_msaa,
             main_target_resolved,
+            ui_target_msaa,
+            ui_target_resolved,
             depth_buffer,
             resolution_in_pixel: config.resolution_in_pixel,
         };
@@ -653,6 +699,7 @@ impl ViewBuilder {
             CompositorDrawData::new(
                 ctx,
                 &view_builder.setup.main_target_resolved,
+                &view_builder.setup.ui_target_resolved,
                 view_builder
                     .outline_mask_processor
                     .as_ref()
@@ -770,6 +817,42 @@ impl ViewBuilder {
                 DrawPhase::Background,
                 DrawPhase::Transparent,
             ] {
+                self.draw_phase_manager
+                    .draw(&renderers, &pipelines, phase, &mut pass);
+            }
+        }
+
+        {
+            re_tracing::profile_scope!("ui pass");
+
+            let needs_msaa_resolve = ctx.render_config().msaa_mode != MsaaMode::Off;
+
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: DebugLabel::from(format!("{} - ui pass", setup.name)).get(),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &setup.ui_target_msaa.default_view,
+                    depth_slice: None,
+                    resolve_target: needs_msaa_resolve
+                        .then_some(&setup.ui_target_resolved.default_view),
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: if needs_msaa_resolve {
+                            // Don't care about the result, if it's going to be resolved to the resolve target.
+                            // This can have be much better perf, especially on tiler gpus.
+                            wgpu::StoreOp::Discard
+                        } else {
+                            // Otherwise, we do need the result for the next pass.
+                            wgpu::StoreOp::Store
+                        },
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+
+            pass.set_bind_group(0, &setup.bind_group_0, &[]);
+            for phase in [DrawPhase::UiShadow, DrawPhase::Ui] {
                 self.draw_phase_manager
                     .draw(&renderers, &pipelines, phase, &mut pass);
             }

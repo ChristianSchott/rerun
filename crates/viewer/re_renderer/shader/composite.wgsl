@@ -18,6 +18,9 @@ var color_texture: texture_2d<f32>;
 @group(1) @binding(2)
 var outline_voronoi_texture: texture_2d<f32>;
 
+@group(1) @binding(3)
+var ui_texture: texture_2d<f32>;
+
 @fragment
 fn main(in: FragmentInput) -> @location(0) vec4f {
     let resolution = vec2f(textureDimensions(color_texture).xy);
@@ -27,6 +30,7 @@ fn main(in: FragmentInput) -> @location(0) vec4f {
     // The issue is that positions provided by @builtin(position) are not dependent on the set viewport,
     // but are about the location of the texel in the target texture.
     var color = textureSample(color_texture, nearest_sampler_clamped, in.texcoord);
+    var ui = textureSample(ui_texture, nearest_sampler_clamped, in.texcoord);
 
 
     // TODO(andreas): We assume that the color from the texture does *not* have pre-multiplied alpha.
@@ -47,7 +51,7 @@ fn main(in: FragmentInput) -> @location(0) vec4f {
         let distance_pixel_a = distance(pixel_coordinates, closest_positions.xy);
         let distance_pixel_b = distance(pixel_coordinates, closest_positions.zw);
 
-        let sharpness = 1.0; // Fun to play around with, but not exposed yet.
+        let sharpness = 0.5; // Fun to play around with, but not exposed yet.
         let outline_a = saturate((uniforms.outline_radius_pixel - distance_pixel_a) * sharpness);
         let outline_b = saturate((uniforms.outline_radius_pixel - distance_pixel_b) * sharpness);
 
@@ -73,6 +77,8 @@ fn main(in: FragmentInput) -> @location(0) vec4f {
         // Show the raw voronoi texture. Useful for debugging.
         //color = vec4f(closest_positions.xy / resolution, 0.0, 1.0);
     }
+
+    color = color * (1.0 - ui.a) + ui;  // ui has premultiplied alpha
 
     color = saturate(color); // TODO(andreas): Do something meaningful with values above 1
 

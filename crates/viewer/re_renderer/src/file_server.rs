@@ -68,7 +68,7 @@ macro_rules! include_file {
         // If we're building from outside the workspace, `file!()` will return an absolute path
         // that might point to anywhere: it doesn't matter, just strip it down to a relative
         // re_renderer path no matter what.
-        let manifest_path = ::std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let manifest_path = ::std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR").replace('\\', "/"));
         let path = path
             .strip_prefix(&manifest_path)
             .map_or_else(|_| path.clone(), ToOwned::to_owned);
