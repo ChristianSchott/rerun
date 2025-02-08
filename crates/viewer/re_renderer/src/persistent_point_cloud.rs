@@ -1,10 +1,13 @@
 use std::{mem::size_of, ops::Range};
 
 use crate::{
+    allocator::create_and_fill_uniform_buffer,
     debug_label::DebugLabel,
-    wgpu_resources::{BufferDesc, GpuBuffer},
-    RenderContext, Rgba32Unmul,
+    renderer::PersistentPointCloudRenderer,
+    wgpu_resources::{BindGroupDesc, BufferDesc, GpuBindGroup, GpuBuffer},
+    PickingLayerInstanceId, RenderContext, Rgba32Unmul,
 };
+use smallvec::smallvec;
 
 /// Defines how mesh vertices are built.
 pub mod mesh_vertices {
@@ -19,31 +22,38 @@ pub mod mesh_vertices {
             [
                 wgpu::VertexFormat::Float32x3, // position
                 wgpu::VertexFormat::Unorm8x4,  // RGBA
+                wgpu::VertexFormat::Uint32x2,  // picking layer instance id
             ]
             .into_iter(),
         )
     }
+}
 
-    /// Next vertex attribute index that can be used for another vertex buffer.
-    pub fn next_free_shader_location() -> u32 {
-        vertex_buffer_layouts()
-            .iter()
-            .flat_map(|layout| layout.attributes.iter())
-            .max_by(|a1, a2| a1.shader_location.cmp(&a2.shader_location))
-            .unwrap()
-            .shader_location
-            + 1
+pub mod gpu_data {
+    use crate::{draw_phases::PickingLayerObjectId, wgpu_buffer_types};
+
+    /// Uniform buffer that changes for every batch of points.
+    #[repr(C)]
+    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct UniformBuffer {
+        pub world_from_obj: wgpu_buffer_types::Mat4,
+
+        pub outline_mask_ids: wgpu_buffer_types::UVec2,
+        pub picking_object_id: PickingLayerObjectId,
+
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 5],
     }
 }
 
 #[derive(Clone)]
-pub struct GPUStaticPointCloud {
+pub struct GPUPersistentPointCloud {
     /// Buffer for all vertex data, subdivided in several sections for different vertex buffer bindings.
     /// See [`mesh_vertices`]
     pub point_count: u64,
-    pub vertex_buffer_combined: GpuBuffer,
-    pub vertex_buffer_positions_range: Range<u64>,
-    pub vertex_buffer_colors_range: Range<u64>,
+    pub point_buffer_combined: GpuBuffer,
+    pub point_buffer_positions_range: Range<u64>,
+    pub point_buffer_colors_range: Range<u64>,
+    pub point_buffer_picking_range: Range<u64>,
     // pub vertex_buffer_normals_range: Range<u64>,
 }
 
@@ -51,30 +61,27 @@ pub struct CPUPointCloud<'t> {
     pub label: DebugLabel,
     pub positions: &'t [glam::Vec3],
     pub colors: &'t [Rgba32Unmul],
+    pub picking: &'t [PickingLayerInstanceId],
 }
 
-impl GPUStaticPointCloud {
+impl GPUPersistentPointCloud {
     // TODO(andreas): Take read-only context here and make uploads happen on staging belt.
     pub fn new(ctx: &RenderContext, data: CPUPointCloud<'_>) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
-        re_log::trace!(
-            "uploading new mesh named {:?} with {} points",
-            data.label.get(),
-            data.positions.len(),
-        );
-
         // TODO(andreas): Have a variant that gets this from a stack allocator.
-        let vb_positions_size = (data.positions.len() * size_of::<glam::Vec3>()) as u64;
-        let vb_color_size = (data.colors.len() * size_of::<Rgba32Unmul>()) as u64;
+        let point_count = data.positions.len();
+        let vb_positions_size = (point_count * size_of::<glam::Vec3>()) as u64;
+        let vb_color_size = (point_count * size_of::<Rgba32Unmul>()) as u64;
+        let vb_picking_size = (point_count * size_of::<glam::UVec2>()) as u64;
 
-        let vb_combined_size = vb_positions_size + vb_color_size;
+        let vb_combined_size = vb_positions_size + vb_color_size + vb_picking_size;
 
         let pools = &ctx.gpu_resources;
         let device = &ctx.device;
 
-        let vertex_buffer_combined = {
-            let vertex_buffer_combined = pools.buffers.alloc(
+        let point_buffer_combined = {
+            let point_buffer_combined = pools.buffers.alloc(
                 device,
                 &BufferDesc {
                     label: format!("{} - vertices", data.label).into(),
@@ -91,19 +98,24 @@ impl GPUStaticPointCloud {
             )?;
             staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.positions))?;
             staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.colors))?;
+            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.picking))?;
             staging_buffer.copy_to_buffer(
                 ctx.active_frame.before_view_builder_encoder.lock().get(),
-                &vertex_buffer_combined,
+                &point_buffer_combined,
                 0,
             )?;
-            vertex_buffer_combined
+            point_buffer_combined
         };
 
+        let colors_start = vb_positions_size;
+        let picking_start = colors_start + vb_color_size;
+
         Ok(Self {
-            vertex_buffer_combined,
-            point_count: data.positions.len() as u64,
-            vertex_buffer_positions_range: 0..vb_positions_size,
-            vertex_buffer_colors_range: vb_positions_size..vb_combined_size,
+            point_count: point_count as u64,
+            point_buffer_combined,
+            point_buffer_positions_range: 0..vb_positions_size,
+            point_buffer_colors_range: colors_start..picking_start,
+            point_buffer_picking_range: picking_start..vb_combined_size,
         })
     }
 }

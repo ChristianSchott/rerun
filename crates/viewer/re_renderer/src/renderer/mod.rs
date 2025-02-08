@@ -25,9 +25,9 @@ mod mesh_renderer;
 pub(crate) use mesh_renderer::MeshRenderer;
 pub use mesh_renderer::{GpuMeshInstance, MeshDrawData};
 
-mod static_point_cloud_renderer;
-pub use static_point_cloud_renderer::StaticPointCloudDrawData;
-pub(crate) use static_point_cloud_renderer::StaticPointCloudRenderer;
+mod persistent_point_cloud_renderer;
+pub use persistent_point_cloud_renderer::PersistentPointCloudDrawData;
+pub(crate) use persistent_point_cloud_renderer::PersistentPointCloudRenderer;
 
 mod compositor;
 pub(crate) use compositor::CompositorDrawData;
