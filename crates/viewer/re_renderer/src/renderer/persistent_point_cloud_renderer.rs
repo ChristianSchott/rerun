@@ -1,4 +1,4 @@
-//! Static Point-Mesh renderer.
+//! Persistent Point-Mesh renderer.
 
 use std::{num::NonZeroU64, sync::Arc};
 
@@ -6,7 +6,7 @@ use smallvec::smallvec;
 
 use crate::{
     allocator::create_and_fill_uniform_buffer,
-    draw_phases::DrawPhase,
+    draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
     persistent_point_cloud::{self, gpu_data, mesh_vertices, GPUPersistentPointCloud},
     view_builder::ViewBuilder,
@@ -41,7 +41,7 @@ impl PersistentPointCloudDrawData {
         point_cloud: Arc<GPUPersistentPointCloud>,
         world_from_point_cloud: glam::Affine3A,
         picking_object_id: PickingLayerObjectId,
-        outline: OutlineMaskPreference,
+        outline: OutlineMaskPreference, // FIXME: currently ignored.. per point outline vs per cloud?
     ) -> Result<Self, CpuWriteGpuReadError> {
         re_tracing::profile_function!();
 
@@ -79,7 +79,7 @@ impl PersistentPointCloudDrawData {
 pub struct PersistentPointCloudRenderer {
     render_pipeline_shaded: GpuRenderPipelineHandle,
     render_pipeline_picking_layer: GpuRenderPipelineHandle,
-    // render_pipeline_outline_mask: GpuRenderPipelineHandle,
+    render_pipeline_outline_mask: GpuRenderPipelineHandle,
     bind_group_layout_all_points: GpuBindGroupLayoutHandle,
 }
 
@@ -89,7 +89,7 @@ impl Renderer for PersistentPointCloudRenderer {
     fn participated_phases() -> &'static [DrawPhase] {
         &[
             DrawPhase::Opaque,
-            // DrawPhase::OutlineMask,
+            DrawPhase::OutlineMask,
             DrawPhase::PickingLayer,
         ]
     }
@@ -162,23 +162,23 @@ impl Renderer for PersistentPointCloudRenderer {
                 ..render_pipeline_shaded_desc.clone()
             },
         );
-        // let render_pipeline_outline_mask = render_pipelines.get_or_create(
-        //     ctx,
-        //     &RenderPipelineDesc {
-        //         label: "StaticPointCloudRenderer::render_pipeline_outline_mask".into(),
-        //         fragment_entrypoint: "fs_main_outline_mask".into(),
-        //         render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
-        //         depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
-        //         multisample: OutlineMaskProcessor::mask_default_msaa_state(ctx.device_caps().tier),
-        //         ..render_pipeline_shaded_desc
-        //     },
-        // );
+        let render_pipeline_outline_mask = render_pipelines.get_or_create(
+            ctx,
+            &RenderPipelineDesc {
+                label: "PersistentPointCloudRenderer::render_pipeline_outline_mask".into(),
+                fragment_entrypoint: "fs_main_outline_mask".into(),
+                render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
+                depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
+                multisample: OutlineMaskProcessor::mask_default_msaa_state(ctx.device_caps().tier),
+                ..render_pipeline_shaded_desc
+            },
+        );
 
         Self {
             render_pipeline_shaded,
             bind_group_layout_all_points,
             render_pipeline_picking_layer,
-            // render_pipeline_outline_mask,
+            render_pipeline_outline_mask,
         }
     }
 
@@ -193,7 +193,7 @@ impl Renderer for PersistentPointCloudRenderer {
 
         let pipeline_handle = match phase {
             DrawPhase::Opaque => self.render_pipeline_shaded,
-            // DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
+            DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
             DrawPhase::PickingLayer => self.render_pipeline_picking_layer,
             _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
         };
@@ -222,6 +222,13 @@ impl Renderer for PersistentPointCloudRenderer {
                 .point_cloud
                 .point_buffer_combined
                 .slice(draw_data.point_cloud.point_buffer_picking_range.clone()),
+        );
+        pass.set_vertex_buffer(
+            3,
+            draw_data
+                .point_cloud
+                .point_buffer_combined
+                .slice(draw_data.point_cloud.point_buffer_outline_range.clone()),
         );
 
         pass.draw(0..draw_data.point_cloud.point_count as u32, 0..1);
