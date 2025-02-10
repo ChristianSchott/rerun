@@ -22,13 +22,15 @@ struct Outlines {
 struct FibonacciSphere {
     num_points: usize,
     index: usize,
+    scale: f32,
 }
 
 impl FibonacciSphere {
-    fn new(num_points: usize) -> Self {
+    fn new(num_points: usize, scale: f32) -> Self {
         Self {
             num_points,
             index: 0,
+            scale,
         }
     }
 }
@@ -49,8 +51,10 @@ impl Iterator for FibonacciSphere {
         self.index += 1;
         Some(
             Vec3::new(sin_theta * phi.cos(), sin_theta * phi.sin(), cos_theta)
-                * (self.index as f32 / self.num_points as f32).sqrt()
-                * 4f32,
+            // + some fun
+                * (((self.index as f32 / self.num_points as f32) * self.scale).sin() * 0.5
+                    + 0.8f32)
+                * 2f32,
         )
     }
 }
@@ -68,7 +72,7 @@ impl framework::Example for Outlines {
 
     fn new(re_ctx: &re_renderer::RenderContext) -> Self {
         let num_points = 50_000;
-        let points = Box::from_iter(FibonacciSphere::new(num_points));
+        let points = Box::from_iter(FibonacciSphere::new(num_points, 0.0));
         let colors = Box::from_iter((0..num_points).map(|i| {
             let v = i as f32 / num_points as f32;
             Rgba32Unmul([
@@ -140,6 +144,12 @@ impl framework::Example for Outlines {
                 ])
             }));
             self.point_cloud.update_color(re_ctx, &colors)?;
+
+            let points = Box::from_iter(FibonacciSphere::new(
+                num_points as usize,
+                (seconds_since_startup * 0.1f32).sin() * 40f32,
+            ));
+            self.point_cloud.update_positions(re_ctx, &points)?;
         }
 
         // TODO(#1426): unify camera logic between examples.
