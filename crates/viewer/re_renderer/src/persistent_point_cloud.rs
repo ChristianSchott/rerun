@@ -5,6 +5,7 @@ use crate::{
     wgpu_resources::{BufferDesc, GpuBuffer},
     PickingLayerInstanceId, RenderContext, Rgba32Unmul,
 };
+use glam::Vec3;
 use smallvec::smallvec;
 
 /// Defines how mesh vertices are built.
@@ -157,6 +158,22 @@ impl GPUPersistentPointCloud {
             ctx.active_frame.before_view_builder_encoder.lock().get(),
             &self.point_buffer_combined,
             self.point_buffer_colors_range.start,
+        )?;
+        anyhow::Ok(())
+    }
+
+    pub fn update_positions(&self, ctx: &RenderContext, positions: &[Vec3]) -> anyhow::Result<()> {
+        let size = self.point_buffer_positions_range.end - self.point_buffer_positions_range.start;
+        let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate::<u8>(
+            &ctx.device,
+            &ctx.gpu_resources.buffers,
+            size as _,
+        )?;
+        staging_buffer.extend_from_slice(bytemuck::cast_slice(&positions))?;
+        staging_buffer.copy_to_buffer(
+            ctx.active_frame.before_view_builder_encoder.lock().get(),
+            &self.point_buffer_combined,
+            self.point_buffer_positions_range.start,
         )?;
         anyhow::Ok(())
     }
