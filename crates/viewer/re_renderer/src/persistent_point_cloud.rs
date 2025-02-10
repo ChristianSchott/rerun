@@ -1,10 +1,8 @@
 use std::{mem::size_of, ops::Range};
 
 use crate::{
-    allocator::create_and_fill_uniform_buffer,
     debug_label::DebugLabel,
-    renderer::PersistentPointCloudRenderer,
-    wgpu_resources::{BindGroupDesc, BufferDesc, GpuBindGroup, GpuBuffer},
+    wgpu_resources::{BufferDesc, GpuBuffer},
     PickingLayerInstanceId, RenderContext, Rgba32Unmul,
 };
 use smallvec::smallvec;
@@ -23,6 +21,7 @@ pub mod mesh_vertices {
                 wgpu::VertexFormat::Float32x3, // position
                 wgpu::VertexFormat::Unorm8x4,  // RGBA
                 wgpu::VertexFormat::Uint32x2,  // picking layer instance id
+                wgpu::VertexFormat::Uint32x2,  // outline mask // FIXME u32??
             ]
             .into_iter(),
         )
@@ -54,6 +53,7 @@ pub struct GPUPersistentPointCloud {
     pub point_buffer_positions_range: Range<u64>,
     pub point_buffer_colors_range: Range<u64>,
     pub point_buffer_picking_range: Range<u64>,
+    pub point_buffer_outline_range: Range<u64>,
     // pub vertex_buffer_normals_range: Range<u64>,
 }
 
@@ -62,6 +62,7 @@ pub struct CPUPointCloud<'t> {
     pub positions: &'t [glam::Vec3],
     pub colors: &'t [Rgba32Unmul],
     pub picking: &'t [PickingLayerInstanceId],
+    pub outline: &'t [glam::UVec2], // FIXME: overkill af
 }
 
 impl GPUPersistentPointCloud {
@@ -74,8 +75,10 @@ impl GPUPersistentPointCloud {
         let vb_positions_size = (point_count * size_of::<glam::Vec3>()) as u64;
         let vb_color_size = (point_count * size_of::<Rgba32Unmul>()) as u64;
         let vb_picking_size = (point_count * size_of::<glam::UVec2>()) as u64;
+        let vb_outline_size = (point_count * size_of::<glam::UVec2>()) as u64;
 
-        let vb_combined_size = vb_positions_size + vb_color_size + vb_picking_size;
+        let vb_combined_size =
+            vb_positions_size + vb_color_size + vb_picking_size + vb_outline_size;
 
         let pools = &ctx.gpu_resources;
         let device = &ctx.device;
@@ -99,6 +102,7 @@ impl GPUPersistentPointCloud {
             staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.positions))?;
             staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.colors))?;
             staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.picking))?;
+            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.outline))?;
             staging_buffer.copy_to_buffer(
                 ctx.active_frame.before_view_builder_encoder.lock().get(),
                 &point_buffer_combined,
@@ -109,13 +113,51 @@ impl GPUPersistentPointCloud {
 
         let colors_start = vb_positions_size;
         let picking_start = colors_start + vb_color_size;
+        let outline_start = picking_start + vb_picking_size;
 
         Ok(Self {
             point_count: point_count as u64,
             point_buffer_combined,
             point_buffer_positions_range: 0..vb_positions_size,
             point_buffer_colors_range: colors_start..picking_start,
-            point_buffer_picking_range: picking_start..vb_combined_size,
+            point_buffer_picking_range: picking_start..outline_start,
+            point_buffer_outline_range: outline_start..vb_combined_size,
         })
+    }
+
+    pub fn update_outline(
+        &self,
+        ctx: &RenderContext,
+        outline: &[glam::UVec2],
+    ) -> anyhow::Result<()> {
+        let size = self.point_buffer_outline_range.end - self.point_buffer_outline_range.start;
+        let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate::<u8>(
+            &ctx.device,
+            &ctx.gpu_resources.buffers,
+            size as _,
+        )?;
+        staging_buffer.extend_from_slice(bytemuck::cast_slice(&outline))?;
+        staging_buffer.copy_to_buffer(
+            ctx.active_frame.before_view_builder_encoder.lock().get(),
+            &self.point_buffer_combined,
+            self.point_buffer_outline_range.start,
+        )?;
+        anyhow::Ok(())
+    }
+
+    pub fn update_color(&self, ctx: &RenderContext, colors: &[Rgba32Unmul]) -> anyhow::Result<()> {
+        let size = self.point_buffer_colors_range.end - self.point_buffer_colors_range.start;
+        let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate::<u8>(
+            &ctx.device,
+            &ctx.gpu_resources.buffers,
+            size as _,
+        )?;
+        staging_buffer.extend_from_slice(bytemuck::cast_slice(&colors))?;
+        staging_buffer.copy_to_buffer(
+            ctx.active_frame.before_view_builder_encoder.lock().get(),
+            &self.point_buffer_combined,
+            self.point_buffer_colors_range.start,
+        )?;
+        anyhow::Ok(())
     }
 }
