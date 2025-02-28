@@ -3,6 +3,7 @@
 use std::{num::NonZeroU64, sync::Arc};
 
 use smallvec::smallvec;
+use wgpu::{BlendComponent, BlendState, ColorWrites};
 
 use crate::{
     allocator::create_and_fill_uniform_buffer,
@@ -136,6 +137,13 @@ impl Renderer for PersistentPointCloudRenderer {
             ..Default::default()
         };
 
+        // TODO: make this customizable
+        let color_target = wgpu::ColorTargetState {
+            format: ViewBuilder::MAIN_TARGET_COLOR_FORMAT,
+            blend: Some(BlendState::ALPHA_BLENDING),
+            write_mask: ColorWrites::ALL,
+        };
+
         let render_pipeline_shaded_desc = RenderPipelineDesc {
             label: "PersistentPointCloudRenderer::render_pipeline_shaded".into(),
             pipeline_layout,
@@ -144,7 +152,7 @@ impl Renderer for PersistentPointCloudRenderer {
             fragment_entrypoint: "fs_main_shaded".into(),
             fragment_handle: shader_module,
             vertex_buffers: mesh_vertices::vertex_buffer_layouts(),
-            render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
+            render_targets: smallvec![Some(color_target)],
             primitive,
             depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
             multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,

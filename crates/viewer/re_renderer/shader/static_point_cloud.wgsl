@@ -45,15 +45,21 @@ fn vs_main(in_vertex: VertexIn) -> VertexOut {
 
 @fragment
 fn fs_main_shaded(in: VertexOut) -> @location(0) vec4f {
-    return vec4f(in.color.rgb, 1.0);
+    return in.color.rgba;
 }
 
 @fragment
 fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
+    if in.color.a < 0.001 {
+        discard;
+    }
     return in.picking_layer_id;
 }
 
-@fragment
+    @fragment
 fn fs_main_outline_mask(in: VertexOut) -> @location(0) vec2u {
+    if in.color.a < 0.001 {
+        discard;
+    }
     return in.outline_mask_ids;
 }
