@@ -110,12 +110,6 @@ pub fn init() {
     }
 
     {
-        let virtpath = Path::new("shader/static_point_cloud.wgsl");
-        let content = include_str!("../shader/static_point_cloud.wgsl").into();
-        fs.create_file(virtpath, content).unwrap();
-    }
-
-    {
         let virtpath = Path::new("shader/rectangle.wgsl");
         let content = include_str!("../shader/rectangle.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
@@ -142,6 +136,12 @@ pub fn init() {
     {
         let virtpath = Path::new("shader/screen_triangle_vertex.wgsl");
         let content = include_str!("../shader/screen_triangle_vertex.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
+        let virtpath = Path::new("shader/static_point_cloud.wgsl");
+        let content = include_str!("../shader/static_point_cloud.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 

@@ -16,8 +16,10 @@ pub mod mesh;
 pub mod renderer;
 pub mod resource_managers;
 pub mod texture_info;
-pub mod video;
 pub mod view_builder;
+
+#[cfg(feature = "re_video")]
+pub mod video;
 
 mod allocator;
 mod color;
@@ -96,7 +98,9 @@ pub use self::file_server::FileServer;
 pub use ecolor::{Color32, Hsva, Rgba};
 
 pub mod external {
+    #[cfg(feature = "re_video")]
     pub use re_video;
+
     pub use wgpu;
 }
 
