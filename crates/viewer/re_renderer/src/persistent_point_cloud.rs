@@ -38,8 +38,8 @@ pub mod gpu_data {
     pub struct UniformBuffer {
         pub world_from_obj: wgpu_buffer_types::Mat4,
 
-        pub outline_mask_ids: wgpu_buffer_types::UVec2,
         pub picking_object_id: PickingLayerObjectId,
+        pub outline_mask_ids: wgpu_buffer_types::UVec2, // currently ignored.. just here for padding
 
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 5],
     }
@@ -55,7 +55,6 @@ pub struct GPUPersistentPointCloud {
     pub point_buffer_colors_range: Range<u64>,
     pub point_buffer_picking_range: Range<u64>,
     pub point_buffer_outline_range: Range<u64>,
-    // pub vertex_buffer_normals_range: Range<u64>,
 }
 
 pub struct CPUPointCloud<'t> {

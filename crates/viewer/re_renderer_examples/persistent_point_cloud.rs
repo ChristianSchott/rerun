@@ -13,7 +13,7 @@ use winit::event::ElementState;
 
 mod framework;
 
-struct Outlines {
+struct PointCloud {
     is_paused: bool,
     seconds_since_startup: f32,
     point_cloud: Arc<GPUPersistentPointCloud>,
@@ -65,7 +65,7 @@ impl ExactSizeIterator for FibonacciSphere {
     }
 }
 
-impl framework::Example for Outlines {
+impl framework::Example for PointCloud {
     fn title() -> &'static str {
         "Outlines"
     }
@@ -181,21 +181,12 @@ impl framework::Example for Outlines {
             },
         );
 
-        let outline_mask = match ((seconds_since_startup * 0.5) as u64) % 5 {
-            0 => OutlineMaskPreference::NONE,
-            1 => OutlineMaskPreference::some(1, 0), // Same as the y spinning mesh.
-            2 => OutlineMaskPreference::some(2, 0), // Different than both meshes, outline A.
-            3 => OutlineMaskPreference::some(0, 1), // Same as the x spinning mesh.
-            4 => OutlineMaskPreference::some(0, 2), // Different than both meshes, outline B.
-            _ => unreachable!(),
-        };
-
         view_builder.queue_draw(PersistentPointCloudDrawData::new(
             re_ctx,
             self.point_cloud.clone(),
             Affine3A::IDENTITY,
             PickingLayerObjectId(0),
-            outline_mask,
+            true,
         )?);
 
         view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(
@@ -222,5 +213,5 @@ impl framework::Example for Outlines {
 }
 
 fn main() {
-    framework::start::<Outlines>();
+    framework::start::<PointCloud>();
 }

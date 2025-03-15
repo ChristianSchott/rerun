@@ -2,6 +2,8 @@
 
 use std::{num::NonZeroU64, sync::Arc};
 
+use enumset::{enum_set, EnumSet};
+use glam::UVec2;
 use smallvec::smallvec;
 use wgpu::{BlendComponent, BlendState, ColorWrites};
 
@@ -25,6 +27,7 @@ use super::{DrawData, DrawError, RenderContext, Renderer};
 pub struct PersistentPointCloudDrawData {
     point_cloud: Arc<GPUPersistentPointCloud>,
     point_cloud_bind_group: GpuBindGroup,
+    active_phases: EnumSet<DrawPhase>,
 }
 
 impl DrawData for PersistentPointCloudDrawData {
@@ -32,17 +35,12 @@ impl DrawData for PersistentPointCloudDrawData {
 }
 
 impl PersistentPointCloudDrawData {
-    /// Transforms and uploads mesh instance data to be consumed by gpu.
-    ///
-    /// Try bundling all mesh instances into a single draw data instance whenever possible.
-    /// If you pass zero mesh instances, subsequent drawing will do nothing.
-    /// Mesh data itself is gpu uploaded if not already present.
     pub fn new(
         ctx: &RenderContext,
         point_cloud: Arc<GPUPersistentPointCloud>,
         world_from_point_cloud: glam::Affine3A,
         picking_object_id: PickingLayerObjectId,
-        outline: OutlineMaskPreference, // FIXME: currently ignored.. per point outline vs per cloud?
+        enable_outline: bool,
     ) -> Result<Self, CpuWriteGpuReadError> {
         re_tracing::profile_function!();
 
@@ -53,8 +51,8 @@ impl PersistentPointCloudDrawData {
                 "PersistentPointCloud::DrawDataUniformBuffer".into(),
                 gpu_data::UniformBuffer {
                     world_from_obj: world_from_point_cloud.into(),
-                    outline_mask_ids: outline.0.unwrap_or_default().into(),
                     picking_object_id,
+                    outline_mask_ids: UVec2::default().into(),
                     end_padding: Default::default(),
                 },
             );
@@ -64,15 +62,27 @@ impl PersistentPointCloudDrawData {
                 &ctx.gpu_resources,
                 &BindGroupDesc {
                     label: "PersistentPointCloudDrawData::bind_group_all_points".into(),
-                    entries: smallvec![all_points_buffer_binding,],
+                    entries: smallvec![all_points_buffer_binding],
                     layout: point_renderer.bind_group_layout_all_points,
                 },
             )
         };
 
+        let active_phases = {
+            let mut active_phases = enum_set![DrawPhase::Opaque];
+            if picking_object_id.0 != 0 {
+                active_phases.insert(DrawPhase::PickingLayer);
+            }
+            if enable_outline {
+                active_phases.insert(DrawPhase::OutlineMask);
+            }
+            active_phases
+        };
+
         Ok(Self {
             point_cloud,
             point_cloud_bind_group,
+            active_phases,
         })
     }
 }
@@ -198,6 +208,10 @@ impl Renderer for PersistentPointCloudRenderer {
         draw_data: &Self::RendererDrawData,
     ) -> Result<(), DrawError> {
         re_tracing::profile_function!();
+
+        if !draw_data.active_phases.contains(phase) {
+            return Result::Ok(());
+        }
 
         let pipeline_handle = match phase {
             DrawPhase::Opaque => self.render_pipeline_shaded,

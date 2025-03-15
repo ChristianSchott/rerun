@@ -11,7 +11,6 @@ struct VertexIn {
 
 struct DrawDataUniformBuffer {
     world_from_obj: mat4x4f,
-    outline_mask_ids: vec2u,
     picking_layer_object_id: vec2u,
 };
 
