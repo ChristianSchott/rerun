@@ -172,7 +172,8 @@ impl framework::Example for PointCloud {
                     aspect_ratio: resolution[0] as f32 / resolution[1] as f32,
                 },
                 pixels_per_point,
-                outline_config: Some(OutlineConfig {
+                outline_config: //None,
+                Some(OutlineConfig {
                     outline_radius_pixel: 2.0,
                     color_layer_a: re_renderer::Rgba::from_rgb(1.0, 0.6, 0.0),
                     color_layer_b: re_renderer::Rgba::from_rgba_unmultiplied(0.25, 0.3, 1.0, 0.8),
@@ -187,6 +188,7 @@ impl framework::Example for PointCloud {
             Affine3A::IDENTITY,
             PickingLayerObjectId(0),
             true,
+            0.005f32 + (seconds_since_startup.sin() * 0.005f32),
         )?);
 
         view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(

@@ -10,6 +10,8 @@ use smallvec::smallvec;
 
 /// Defines how mesh vertices are built.
 pub mod mesh_vertices {
+    use wgpu::VertexStepMode;
+
     use crate::wgpu_resources::VertexBufferLayout;
 
     /// Vertex buffer layouts describing how vertex data should be laid out.
@@ -17,7 +19,7 @@ pub mod mesh_vertices {
     /// Needs to be kept in sync with `mesh_vertex.wgsl`.
     pub fn vertex_buffer_layouts() -> smallvec::SmallVec<[VertexBufferLayout; 4]> {
         // TODO(andreas): Compress normals. Afaik Octahedral Mapping is the best by far, see https://jcgt.org/published/0003/02/01/
-        VertexBufferLayout::from_formats(
+        let mut layouts = VertexBufferLayout::from_formats(
             [
                 wgpu::VertexFormat::Float32x3, // position
                 wgpu::VertexFormat::Unorm8x4,  // RGBA
@@ -25,7 +27,14 @@ pub mod mesh_vertices {
                 wgpu::VertexFormat::Uint32x2,  // outline mask // FIXME u32??
             ]
             .into_iter(),
-        )
+        );
+
+        // FIXME: clean this up..
+        layouts
+            .iter_mut()
+            .for_each(|l| l.step_mode = VertexStepMode::Instance);
+
+        layouts
     }
 }
 
@@ -41,7 +50,9 @@ pub mod gpu_data {
         pub picking_object_id: PickingLayerObjectId,
         pub outline_mask_ids: wgpu_buffer_types::UVec2, // currently ignored.. just here for padding
 
-        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 5],
+        pub point_size: wgpu_buffer_types::Vec4, // only the first float is actually used, the rest is padding
+
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 6],
     }
 }
 

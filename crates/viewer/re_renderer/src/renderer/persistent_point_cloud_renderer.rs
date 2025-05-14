@@ -41,6 +41,7 @@ impl PersistentPointCloudDrawData {
         world_from_point_cloud: glam::Affine3A,
         picking_object_id: PickingLayerObjectId,
         enable_outline: bool,
+        point_size: f32,
     ) -> Result<Self, CpuWriteGpuReadError> {
         re_tracing::profile_function!();
 
@@ -53,6 +54,7 @@ impl PersistentPointCloudDrawData {
                     world_from_obj: world_from_point_cloud.into(),
                     picking_object_id,
                     outline_mask_ids: UVec2::default().into(),
+                    point_size: glam::Vec4::new(point_size, 0f32, 0f32, 0f32).into(),
                     end_padding: Default::default(),
                 },
             );
@@ -143,16 +145,16 @@ impl Renderer for PersistentPointCloudRenderer {
         );
 
         let primitive = wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::PointList,
+            topology: wgpu::PrimitiveTopology::TriangleList, // FIXME: just use wgpu::PrimitiveState::default()
             ..Default::default()
         };
 
         // TODO: make this customizable
-        let color_target = wgpu::ColorTargetState {
-            format: ViewBuilder::MAIN_TARGET_COLOR_FORMAT,
-            blend: Some(BlendState::ALPHA_BLENDING),
-            write_mask: ColorWrites::ALL,
-        };
+        // let color_target = wgpu::ColorTargetState {
+        //     format: ViewBuilder::MAIN_TARGET_COLOR_FORMAT,
+        //     blend: Some(BlendState::ALPHA_BLENDING),
+        //     write_mask: ColorWrites::ALL,
+        // };
 
         let render_pipeline_shaded_desc = RenderPipelineDesc {
             label: "PersistentPointCloudRenderer::render_pipeline_shaded".into(),
@@ -162,7 +164,7 @@ impl Renderer for PersistentPointCloudRenderer {
             fragment_entrypoint: "fs_main_shaded".into(),
             fragment_handle: shader_module,
             vertex_buffers: mesh_vertices::vertex_buffer_layouts(),
-            render_targets: smallvec![Some(color_target)],
+            render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_ALPHA_TO_COVERAGE_COLOR_STATE)], //Some(color_target)],
             primitive,
             depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
             multisample: ViewBuilder::main_target_default_msaa_state(ctx.render_config(), false),
@@ -253,7 +255,8 @@ impl Renderer for PersistentPointCloudRenderer {
                 .slice(draw_data.point_cloud.point_buffer_outline_range.clone()),
         );
 
-        pass.draw(0..draw_data.point_cloud.point_count as u32, 0..1);
+        pass.draw(0..6, 0..draw_data.point_cloud.point_count as u32);
+        // pass.draw(0..draw_data.point_cloud.point_count as u32, 0..1);
 
         Ok(())
     }
