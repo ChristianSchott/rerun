@@ -118,7 +118,7 @@ impl Renderer for PersistentPointCloudRenderer {
                 label: "PersistentPointCloudRenderer::bind_group_layout_all_points".into(),
                 entries: vec![wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
