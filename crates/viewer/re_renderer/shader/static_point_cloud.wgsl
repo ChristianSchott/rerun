@@ -102,6 +102,9 @@ fn vs_main(in_vertex: VertexIn) -> VertexOut {
     // Output, transform to projection space and done.
     var out: VertexOut;
     out.position = frame.projection_from_world * vec4f(quad.pos_in_world, 1.0);
+    if point_data.color.a == 0 {
+        out.position = vec4f(-10.0, -10.0, -10.0, 0.0);
+    }
     out.color = point_data.color;
     out.radius = quad.point_resolved_radius;
     out.world_position = quad.pos_in_world;
@@ -120,10 +123,11 @@ fn circle_quad_coverage(world_position: vec3f, radius: f32, circle_center: vec3f
 
 @fragment
 fn fs_main_shaded(in: VertexOut) -> @location(0) vec4f {
-    let cov = circle_quad_coverage(in.world_position, in.radius, in.point_center);
-    if cov < 0.001 || in.color.a == 0 {
-        discard;
-    }
+    let cov = 1.0;
+    // let cov = circle_quad_coverage(in.world_position, in.radius, in.point_center);
+    // if cov < 0.001 {
+    //     discard;
+    // }
     return vec4f(in.color.rgb, cov);
 
     // if in.color.a == 0 {
@@ -134,10 +138,10 @@ fn fs_main_shaded(in: VertexOut) -> @location(0) vec4f {
 
 @fragment
 fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
-    let cov = circle_quad_coverage(in.world_position, in.radius, in.point_center);
-    if cov <= 0.5 || in.color.a == 0 {
-        discard;
-    }
+    // let cov = circle_quad_coverage(in.world_position, in.radius, in.point_center);
+    // if cov <= 0.5 {
+    //     discard;
+    // }
     return vec4u(draw_data.picking_layer_object_id, in.picking_instance_id);
 
     // if in.color.a == 0 {
@@ -150,10 +154,10 @@ fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
 fn fs_main_outline_mask(in: VertexOut) -> @location(0) vec2u {
     // Output is an integer target so we can't use coverage even though
     // the target is anti-aliased.
-    let cov = circle_quad_coverage(in.world_position, in.radius, in.point_center);
-    if cov <= 0.5 || in.color.a == 0 {
-        discard;
-    }
+    // let cov = circle_quad_coverage(in.world_position, in.radius, in.point_center);
+    // if cov <= 0.5 {
+    //     discard;
+    // }
     return in.outline_mask_ids;
 
     // if in.color.a == 0 {
