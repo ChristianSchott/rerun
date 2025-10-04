@@ -106,10 +106,12 @@ pub use texture_info::Texture2DBufferInfo;
 pub use transform::RectTransform;
 pub use view_builder::{RenderMode, ViewBuilder, ViewPickingConfiguration};
 pub use wgpu_resources::{
-    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-    GpuPipelineLayoutPool, GpuRenderPipelineHandle, GpuRenderPipelinePool,
-    GpuRenderPipelinePoolAccessor, GpuShaderModuleHandle, GpuShaderModulePool, PipelineLayoutDesc,
-    RenderPipelineDesc, ShaderModuleDesc, VertexBufferLayout, WgpuResourcePoolStatistics,
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, BufferDesc, ComputePipelineDesc,
+    GpuBindGroup, GpuBindGroupLayoutHandle, GpuBuffer, GpuComputePipelineHandle,
+    GpuComputePipelinePool, GpuPipelineLayoutPool, GpuRenderPipelineHandle, GpuRenderPipelinePool,
+    GpuRenderPipelinePoolAccessor, GpuSamplerHandle, GpuShaderModuleHandle, GpuShaderModulePool,
+    GpuTexture, PipelineLayoutDesc, RenderPipelineDesc, SamplerDesc, ShaderModuleDesc, TextureDesc,
+    VertexBufferLayout, WgpuResourcePoolStatistics,
 };
 
 pub use self::file_system::{FileSystem, get_filesystem};

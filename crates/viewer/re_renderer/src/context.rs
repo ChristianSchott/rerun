@@ -470,6 +470,7 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
                 bind_groups,
                 pipeline_layouts,
                 render_pipelines,
+                compute_pipelines,
                 samplers,
                 shader_modules,
                 textures,
@@ -480,6 +481,12 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
             // recompilation picks up all shaders that have been recompiled this frame.
             shader_modules.begin_frame(&self.device, &self.resolver, frame_index, &modified_paths);
             render_pipelines.begin_frame(
+                &self.device,
+                frame_index,
+                shader_modules,
+                pipeline_layouts,
+            );
+            compute_pipelines.begin_frame(
                 &self.device,
                 frame_index,
                 shader_modules,
