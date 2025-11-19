@@ -55,4 +55,10 @@ pub enum DrawPhase {
     /// Drawn when compositing with the main target, but for screenshots.
     /// This is a separate phase primarily because screenshots may be rendered with a different texture format.
     CompositingScreenshot,
+
+    /// Drawn on top of everything else
+    Ui,
+
+    /// Drawn before Ui
+    UiShadow,
 }

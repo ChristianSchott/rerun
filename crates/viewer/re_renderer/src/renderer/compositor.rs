@@ -73,6 +73,7 @@ impl CompositorDrawData {
     pub fn new(
         ctx: &RenderContext,
         color_texture: &GpuTexture,
+        ui_texture: &GpuTexture,
         outline_final_voronoi: Option<&GpuTexture>,
         outline_config: &Option<OutlineConfig>,
         enable_blending: bool,
@@ -112,7 +113,8 @@ impl CompositorDrawData {
                     entries: smallvec![
                         uniform_buffer_binding,
                         BindGroupEntry::DefaultTextureView(color_texture.handle),
-                        BindGroupEntry::DefaultTextureView(outline_final_voronoi_handle)
+                        BindGroupEntry::DefaultTextureView(outline_final_voronoi_handle),
+                        BindGroupEntry::DefaultTextureView(ui_texture.handle)
                     ],
                     layout: compositor.bind_group_layout,
                 },
@@ -160,6 +162,16 @@ impl Renderer for Compositor {
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
                             view_dimension: wgpu::TextureViewDimension::D2,
                             multisampled: false,
                         },
