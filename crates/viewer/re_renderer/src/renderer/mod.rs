@@ -4,7 +4,6 @@ mod depth_cloud;
 mod generic_skybox;
 mod lines;
 mod mesh_renderer;
-mod persistent_point_cloud_renderer;
 mod point_cloud;
 mod rectangles;
 mod test_triangle;
@@ -15,7 +14,6 @@ pub use debug_overlay::{DebugOverlayDrawData, DebugOverlayError, DebugOverlayRen
 pub use generic_skybox::{GenericSkyboxDrawData, GenericSkyboxType};
 pub use lines::{LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags};
 pub use mesh_renderer::{GpuMeshInstance, MeshDrawData};
-pub use persistent_point_cloud_renderer::PersistentPointCloudDrawData;
 pub use point_cloud::{
     PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
 };
@@ -35,7 +33,6 @@ pub mod gpu_data {
 
 pub(crate) use compositor::CompositorDrawData;
 pub(crate) use mesh_renderer::MeshRenderer;
-pub(crate) use persistent_point_cloud_renderer::PersistentPointCloudRenderer;
 
 // ------------
 

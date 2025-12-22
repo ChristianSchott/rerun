@@ -140,12 +140,6 @@ pub fn init() {
     }
 
     {
-        let virtpath = Path::new("shader/static_point_cloud.wgsl");
-        let content = include_str!("../shader/static_point_cloud.wgsl").into();
-        fs.create_file(virtpath, content).unwrap();
-    }
-
-    {
         let virtpath = Path::new("shader/test_triangle.wgsl");
         let content = include_str!("../shader/test_triangle.wgsl").into();
         fs.create_file(virtpath, content).unwrap();

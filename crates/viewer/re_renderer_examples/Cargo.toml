@@ -33,10 +33,6 @@ name = "outlines"
 path = "outlines.rs"
 
 [[bin]]
-name = "persistent_point_cloud"
-path = "persistent_point_cloud.rs"
-
-[[bin]]
 name = "picking"
 path = "picking.rs"
 
